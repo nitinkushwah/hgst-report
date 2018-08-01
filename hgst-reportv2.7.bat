@@ -1,8 +1,9 @@
 @echo off
 REM Author: CTS GSS
 REM JBOD Log gathering for Windows
-REM V2.6
-set VERSION=2.6
+REM V2.7
+set VERSION=2.7
+REM History: v2.7 20th July 2018: fixed bug for multiple ESM logs collection
 REM History: v2.6 18th May 2018: removed makecab as it fails under some conditions.
 REM History: v2.5 10th May 2018: Added Megaraid storcli commands
 REM History: v2.4 21st Mar 2018: Clean directory structure, 60 days of windows logs
@@ -13,7 +14,7 @@ REM History: 14th Mar 2018: Script can now collect logs from more than 2 ESMs
 REM History: 14th Mar 2018: Added windows system and application log collection
 REM History:8th Mar 2018: added automatic scanning the ESM ID 
 REM History:8th Mar 2018: added E6 raw page collection
-
+REM
 
 
 echo Script Version : %VERSION%
@@ -44,12 +45,12 @@ for /f "tokens=1" %%i in ('sg_scan -s ^| findstr -i "4U60 4U102 2u 4u peak madon
 )
 
 
-IF [%1]==[] GOTO Syntax
+REM IF [%1]==[] GOTO Syntax
 
-set ESMA="%VAR[1]%"
+REM set ESMA="%VAR[1]%"
 
-IF NOT DEFINED VAR[2] (SET VAR[2]=NA) 
-set ESMB="%VAR[2]%"
+REM IF NOT DEFINED VAR[2] (SET VAR[2]=NA) 
+REM set ESMB="%VAR[2]%"
 REM set DIR=%1
 set DIR="%1\logs_%COMPUTERNAME%_%DATE:~-4%%DATE:~4,2%%DATE:~7,2%_%time:~-11,2%%time:~-8,2%%time:~-5,2%"
 
@@ -177,61 +178,62 @@ storcli /c0 show events type=latest=500 filter=info  >>%DIR%\storcli\events_info
 
 
 
+
 for /l %%n in (1,1,%COUNT%) do (
+
 mkdir %DIR%\ESM%%n
 
+echo Collecting logs for : ESM%%n  !VAR[%%n]! ......
 
-echo Collecting ESM%%n logs ......
+sg_ses !VAR[%%n]! -p0x0 >> %DIR%\ESM%%n\page_00h.txt
 
-sg_ses %ESMA% -p0x0 >> %DIR%\ESM%%n\page_00h.txt
+sg_ses !VAR[%%n]! -p0x1 >> %DIR%\ESM%%n\page_01h.txt
 
-sg_ses %ESMA% -p0x1 >> %DIR%\ESM%%n\page_01h.txt
+sg_ses !VAR[%%n]! -p0x2 >> %DIR%\ESM%%n\page_02h.txt
 
-sg_ses %ESMA% -p0x2 >> %DIR%\ESM%%n\page_02h.txt
+sg_ses !VAR[%%n]! -p0x3 >> %DIR%\ESM%%n\page_03h.txt
 
-sg_ses %ESMA% -p0x3 >> %DIR%\ESM%%n\page_03h.txt
+sg_ses !VAR[%%n]! -p0x5 >> %DIR%\ESM%%n\page_05h.txt
 
-sg_ses %ESMA% -p0x5 >> %DIR%\ESM%%n\page_05h.txt
+sg_ses !VAR[%%n]! -p0x7 >> %DIR%\ESM%%n\page_07h.txt
 
-sg_ses %ESMA% -p0x7 >> %DIR%\ESM%%n\page_07h.txt
+sg_ses !VAR[%%n]! -p0xA >> %DIR%\ESM%%n\page_0Ah.txt
 
-sg_ses %ESMA% -p0xA >> %DIR%\ESM%%n\page_0Ah.txt
+sg_ses !VAR[%%n]! -p0xEA >> %DIR%\ESM%%n\page_EAh.txt 2>nul
 
-sg_ses %ESMA% -p0xEA >> %DIR%\ESM%%n\page_EAh.txt 2>nul
+sg_ses !VAR[%%n]! -jj >> %DIR%\ESM%%n\join.txt
 
-sg_ses %ESMA% -jj >> %DIR%\ESM%%n\join.txt
+sg_inq !VAR[%%n]! >> %DIR%\ESM%%n\inq.txt
 
-sg_inq %ESMA% >> %DIR%\ESM%%n\inq.txt
+sg_inq !VAR[%%n]! -p0x83 >> %DIR%\ESM%%n\inq_83h.txt
 
-sg_inq %ESMA% -p0x83 >> %DIR%\ESM%%n\inq_83h.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 01 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\console_log.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 01 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\console_log.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 02 01 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\console_log.txt
 
-sg_raw %ESMA% -r 0x4000 E6 00 01 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\console_log.txt
-sg_raw %ESMA% -r 0x4000 E6 01 01 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\console_log.txt
-sg_raw %ESMA% -r 0x4000 E6 02 01 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\console_log.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 02 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_primary.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 02 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_primary.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 02 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_primary.txt
 
-sg_raw %ESMA% -r 0x4000 E6 00 02 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_primary.txt
-sg_raw %ESMA% -r 0x4000 E6 00 02 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_primary.txt
-sg_raw %ESMA% -r 0x4000 E6 00 02 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_primary.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 02 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary1.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 02 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary1.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 02 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary1.txt
 
-sg_raw %ESMA% -r 0x4000 E6 01 02 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary1.txt
-sg_raw %ESMA% -r 0x4000 E6 01 02 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary1.txt
-sg_raw %ESMA% -r 0x4000 E6 01 02 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary1.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 02 02 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary2.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 02 02 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary2.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 02 02 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary2.txt
 
-sg_raw %ESMA% -r 0x4000 E6 02 02 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary2.txt
-sg_raw %ESMA% -r 0x4000 E6 02 02 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary2.txt
-sg_raw %ESMA% -r 0x4000 E6 02 02 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\crashlog_secondary2.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 03 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_primary.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 03 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_primary.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 00 03 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_primary.txt
 
-sg_raw %ESMA% -r 0x4000 E6 00 03 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_primary.txt
-sg_raw %ESMA% -r 0x4000 E6 00 03 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_primary.txt
-sg_raw %ESMA% -r 0x4000 E6 00 03 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_primary.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 03 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary1.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 03 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary1.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 03 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary1.txt
 
-sg_raw %ESMA% -r 0x4000 E6 01 03 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary1.txt
-sg_raw %ESMA% -r 0x4000 E6 01 03 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary1.txt
-sg_raw %ESMA% -r 0x4000 E6 01 03 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary1.txt
-
-sg_raw %ESMA% -r 0x4000 E6 01 03 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary2.txt
-sg_raw %ESMA% -r 0x4000 E6 01 03 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary2.txt
-sg_raw %ESMA% -r 0x4000 E6 01 03 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary2.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 03 00 00 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary2.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 03 00 20 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary2.txt
+sg_raw !VAR[%%n]! -r 0x4000 E6 01 03 00 40 00 00 20 10 00 2>> %DIR%\ESM%%n\eventlog_secondary2.txt
 
 )
 
@@ -250,7 +252,7 @@ GOTO End
 :Package
 ECHO.
 ECHO.
-ECHO Provide the logs_%COMPUTERNAME%_%DATE:~-4%%DATE:~4,2%%DATE:~7,2%_%time:~-11,2%%time:~-8,2%%time:~-5,2% created in the destination directory to support for further analysis.
+ECHO Provide the logs %DIR% created to support for further analysis.
 ECHO.
 GOTO End
 

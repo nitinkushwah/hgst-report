@@ -1,5 +1,5 @@
 @echo off
-REM Author: CTS GSS
+REM Author: Nitin Kushwaah
 REM JBOD Log gathering for Windows
 REM V2.7
 set VERSION=2.7
